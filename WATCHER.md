@@ -375,7 +375,8 @@ through any tool — and bring the co-located docs back in sync.
    mtime (sync/re-save bumps mtime without changing bytes).
 
 3. CLASSIFY by READING each changed artifact (bounded reads):
-     - PDF: Read tool with a page range.
+     - PDF: your agent's native PDF reader (e.g. Claude Code's Read tool with a
+       page range), else `pdftotext -f <first> -l <last> file.pdf -`.
      - pptx/xlsx/docx: python-pptx/openpyxl/python-docx if present, else
        `unzip -p` the XML parts and strip tags.
      - legacy doc/ppt/xls: textutil (.doc on macOS) or
@@ -438,3 +439,31 @@ place.
 - **Classification is heuristic.** `v7 → v8` by filename, "same structure" by schema
   read, the *why* of a change by formula diff — confident cases auto-apply;
   ambiguous ones go to the ask queue rather than a wrong edit.
+
+---
+
+## 11. Agnostic by design — swap the runner, keep the brain
+
+Everything above is **model- and agent-agnostic.** The reconciliation *logic* —
+snapshot-diff detection, read-then-classify, append-only supersede, ask-the-last-
+editor — has nothing Claude-specific in it. Codex, Gemini, a local Qwen / DeepSeek,
+or any agent that can read files and run a shell does the same job. Only three
+things are runtime-specific, and each swaps 1:1:
+
+- **The runner.** `claude -p "<prompt>"` is one example. Replace it with any
+  headless agent — `codex exec`, `gemini -p`, `qwen-code`, or your own API loop —
+  in the same cron line. `scripts/arm-watcher.sh` takes `--runner`, so the binary
+  is never hardcoded.
+- **The scheduler.** A Claude Code Routine is one option; OS cron, a desktop task,
+  GitHub Actions, or any cloud scheduler invoking your agent works identically.
+- **PDF reading.** "the Read tool reads PDFs natively" is a Claude convenience; the
+  agnostic fallback (`pdftotext`, or `unzip` the XML for Office) in §3 covers every
+  other runtime. The other extractors (`unzip`, `python`, `textutil`, `soffice`)
+  are plain shell — already agnostic.
+
+The **docs** are agnostic too: `AGENTS.md` is the cross-agent canonical
+(Codex / Cursor / Gemini read it natively); the one-line `CLAUDE.md` stub is just
+the Claude Code bridge. For another harness that auto-loads its own file, add an
+equivalent one-line stub pointing at `AGENTS.md` — same trick, different filename.
+The reconciliation logic and the knowledge bundle never change.
+
