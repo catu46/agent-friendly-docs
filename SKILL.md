@@ -124,6 +124,14 @@ MATTERS and WHAT'S STILL TRUE.
    stops surprising and the human confirms the picture.
 5. Then **propose** the tree, **confirm**, and **BUILD**: write `AGENTS.md` + `knowledge/`, wire links,
    embed the self-update protocol, and write `knowledge/.okf-state.json`.
+6. **Verify with fresh eyes** — the acceptance test that closes the loop. **Deploy a subagent carrying
+   none of this conversation's context**, rooted at the built tree (or a representative folder), as if a
+   brand-new agent just opened the repo. Have it, using ONLY the docs: (a) state what this folder/project
+   is and how it would do a representative task; (b) flag anything it could **not** determine. Whatever
+   the cold agent stumbles on is a **real gap** → fix the docs and re-verify. This proves the north-star
+   loop empirically: *a fresh chat gets oriented from the docs alone.* At scale, point the fresh agent at
+   a sample of folders (incl. one opened **in isolation**, to test the up-pointer). `validate.py` checks
+   the **shape**; this checks **comprehension** — ship only when both pass.
 
 **At scale (hundreds of folders), DECENTRALIZE:** one subagent per leaf folder reads its files and writes
 that folder's docs; roll summaries **leaf → mid → root** so no context ever holds the whole tree.
@@ -162,4 +170,5 @@ A bundled **[scripts/validate.py](scripts/validate.py)** (Python 3, **stdlib onl
 enforces the shapes: both `AGENTS.md` + `CLAUDE.md` present, the stub is exactly `@AGENTS.md`, required
 frontmatter keys, links and `resource:` paths resolve, `knowledge/` has an `index.md`, timestamps parse,
 `status` and supersede pointers are valid — failing on errors and listing warnings. Run it after building
-and after every watcher pass.
+and after every watcher pass. It is the **shape** half of acceptance; pair it with the **fresh-eyes**
+comprehension check (loop step 6) before declaring a tree done.
