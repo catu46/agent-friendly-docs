@@ -1,7 +1,8 @@
 # agent-friendly-docs
 
 A Claude Code / cross-agent **skill** that scaffolds an agent-friendly documentation architecture for
-any codebase — and keeps it from going stale.
+any folder tree — code or documents (decks, spreadsheets, PDFs, datasets, assets) — and keeps it from
+going stale.
 
 It produces `AGENTS.md` as the canonical, cross-agent source of truth (the [agents.md](https://agents.md)
 standard) with a one-line `CLAUDE.md` stub so Claude Code auto-loads it. Every meaningful folder gets
@@ -26,6 +27,9 @@ project/
   bridges it. No content duplication, no symlinks.
 - **Self-updating** — every doc ends with a "Keep this current" rule that tells the agent to refresh
   the folder's doc after real changes and propagate up to the parent/root *only where needed*.
+
+It works for **non-code folders** too — for opaque files (`.pptx`, `.xlsx`, `.pdf`) it leans on the
+interview and a file inventory instead of parsing contents.
 
 ## How it works
 

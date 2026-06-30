@@ -51,6 +51,10 @@ repository map, shared conventions, or glossary:
 
 Each folder doc must stand alone — assume the agent opened **only** this folder as its root.
 
+For a **document / asset folder**, read these sections loosely: *Key files* → what's here + naming &
+versioning + where the latest / source-of-truth version lives; *How to work here* → how to find, add,
+or update a deliverable.
+
 ~~~md
 # <Folder name>
 

@@ -1,13 +1,22 @@
 ---
 name: agent-friendly-docs
-description: Scaffold an agent-friendly documentation architecture for a codebase — a canonical root AGENTS.md (cross-agent standard) plus a CLAUDE.md import stub, and a self-contained AGENTS.md + CLAUDE.md stub in each meaningful folder so any folder can be opened in isolation by an AI agent. Every generated doc embeds a self-updating protocol so context never goes stale. Use when starting a project's docs from scratch or with little existing documentation, organizing folders to be agent-friendly, building a "mother" index doc that routes to per-folder docs, or making CLAUDE.md-based docs agent-agnostic. Triggers (English): "organize folders", "agent-friendly docs", "AGENTS.md", "mother CLAUDE.md", "docs for agents". Triggers (Portuguese): "organizar pastinhas", "deixar agent-friendly", "documentação para agentes", "CLAUDE.md mãe".
+description: Scaffold an agent-friendly documentation architecture for any folder tree — code or documents (slide decks, spreadsheets, PDFs, datasets, assets, or a mix) — a canonical root AGENTS.md (cross-agent standard) plus a CLAUDE.md import stub, and a self-contained AGENTS.md + CLAUDE.md stub in each meaningful folder so any folder can be opened in isolation by an AI agent. Every generated doc embeds a self-updating protocol so context never goes stale. Use when starting a project's docs from scratch or with little existing documentation, organizing folders (code OR document/Excel/PowerPoint folders) to be agent-friendly, building a "mother" index doc that routes to per-folder docs, or making CLAUDE.md-based docs agent-agnostic. Triggers (English): "organize folders", "agent-friendly docs", "AGENTS.md", "mother CLAUDE.md", "docs for agents", "document/Excel/PowerPoint folder". Triggers (Portuguese): "organizar pastinhas", "deixar agent-friendly", "documentação para agentes", "CLAUDE.md mãe".
 ---
 
 # Agent-Friendly Docs
 
-Scaffold a documentation architecture any AI coding agent can navigate, with `AGENTS.md` as the
-cross-agent source of truth and `CLAUDE.md` as a thin auto-load stub. Best when starting a project's
-docs from zero, or with very little existing documentation, and you want an agentic-friendly foundation.
+Scaffold a documentation architecture any AI agent can navigate, with `AGENTS.md` as the cross-agent
+source of truth and `CLAUDE.md` as a thin auto-load stub. Best when starting a project's docs from
+zero, or with very little existing documentation, and you want an agentic-friendly foundation.
+
+## Works for any folder (not just code)
+
+This applies to code **and** to folders of documents — slide decks (`.pptx`), spreadsheets (`.xlsx`),
+docs (`.docx` / `.pdf`), datasets, design assets, research, or a mix. The architecture is identical;
+only the **exploration** changes. When files are opaque/binary you can't read them cheaply, so the
+**interview (Phase 1) carries most of the reliability** — lean on it, and inventory the files (names,
+types, folders, counts, latest version) instead of parsing contents. Sample or extract text from a few
+key files only if the user asks and the tooling allows.
 
 ## Core architecture (always)
 
@@ -28,27 +37,33 @@ docs from zero, or with very little existing documentation, and you want an agen
 
 ## Workflow — two phases (always run both, in order)
 
-### Phase 1 — Interview the human (in the user's language; conversation only, do NOT open code yet)
+### Phase 1 — Interview the human (in the user's language; conversation only, do NOT open files yet)
 
-Goal: understand the project AND the folder organization that fits *this* person's mental model.
-Ask (group related questions with AskUserQuestion; otherwise just converse), then reflect a one-paragraph
-summary back and confirm before moving on:
+Goal: understand the project AND the folder organization that fits *this* person's mental model. For
+non-code folders this phase matters most — the files won't explain themselves. Ask (group related
+questions with AskUserQuestion; otherwise just converse), then reflect a one-paragraph summary back and
+confirm before moving on:
 
-- What is the project — domain, purpose, who/what it's for, stage (greenfield vs. existing code)?
-- Stack, key tools, services, runtime.
+- What is the project — domain, purpose, who/what it's for, stage (greenfield vs. existing material)?
+- **What kind of folder is this** — code, documents (decks / sheets / PDFs), data, assets, or mixed?
+  What are the deliverables, and how are they named / versioned (e.g. "final", "v2", dates)?
+- Stack / key tools / services (for code), or the tools and formats in play (for documents).
 - How does the user already think about the parts? What are the natural modules / areas / pastinhas?
 - Desired granularity — how deep should docs nest? Any folders that must / must not get their own doc?
 - Docs language, and which agents will consume them.
 
 Do not propose a structure yet. First capture intent.
 
-### Phase 2 — Explore the code & build (ask clarifying questions throughout)
+### Phase 2 — Explore the contents & build (ask clarifying questions throughout)
 
-1. **Dive in.** Map the real folder tree, entry points, and how things actually relate.
+1. **Dive in.** Map the real folder tree and how things relate. For **code**, read entry points and key
+   modules. For **documents / binary files** (`.pptx`, `.xlsx`, `.pdf`, …), inventory names, types,
+   counts, dates, and groupings — don't try to parse every file; rely on the interview for meaning.
 2. **Reconcile** what you find with Phase 1. Surface mismatches and **ask** whenever reality is
    ambiguous ("folder X mixes Y and Z — split or keep as one?"). Keep asking until the plan is clean.
-3. **Pick folders** that are a meaningful unit (service / package / feature / dataset). Skip
-   generated & dependency dirs (`node_modules`, `dist`, `build`, `.git`, `vendor`, `.next`, `target`)
+3. **Pick folders** that are a meaningful unit (service / package / feature / dataset / deliverable set
+   / topic / client / asset group). Skip generated & dependency dirs *(code)* — `node_modules`,
+   `dist`, `build`, `.git`, `vendor`, `.next`, `target` — plus system cruft (`.DS_Store`, temp files)
    and trivial leaves. Depth 1–2 unless complexity warrants more. Don't over-fragment.
 4. **Show the proposed tree** (which folders get docs) and confirm before writing.
 5. **Write** root `AGENTS.md` + `CLAUDE.md` stub, then each folder's `AGENTS.md` + stub.
