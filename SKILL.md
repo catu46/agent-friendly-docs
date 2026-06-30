@@ -132,6 +132,13 @@ MATTERS and WHAT'S STILL TRUE.
    loop empirically: *a fresh chat gets oriented from the docs alone.* At scale, point the fresh agent at
    a sample of folders (incl. one opened **in isolation**, to test the up-pointer). `validate.py` checks
    the **shape**; this checks **comprehension** — ship only when both pass.
+7. **Arm the watcher** — the last step of the task. Once the tree passes shape + comprehension, the docs
+   are built but static; arm the daily reconciliation so they self-feed from day one. Run
+   `scripts/arm-watcher.sh <tree> --install` (runner-agnostic via `--runner`), choosing the backend for
+   the project's source — **git / Google Drive / SharePoint / plain folder** (see
+   [WATCHER.md](WATCHER.md) §8 + §11 and the README's per-source table). **Confirm before installing a
+   scheduled job:** it is a recurring system change, and API-backed sources (Drive/Graph) need
+   credentials and usually a cloud Routine rather than a local cron.
 
 **At scale (hundreds of folders), DECENTRALIZE:** one subagent per leaf folder reads its files and writes
 that folder's docs; roll summaries **leaf → mid → root** so no context ever holds the whole tree.

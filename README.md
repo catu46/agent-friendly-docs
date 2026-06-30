@@ -89,6 +89,36 @@ Drive/SharePoint "last modified by", or the OS owner / a configured folder owner
 `ASKS.md` queue, an issue, Slack, or email. It runs on a schedule — a Claude Code routine in
 the cloud, or a local cron invoking `claude -p`.
 
+### Arming the daily run (per source)
+
+Arming the watcher is the **last step of the skill run**: once the tree is built and verified,
+one command schedules the daily reconciliation so the docs self-feed from day one.
+
+```bash
+~/.claude/skills/agent-friendly-docs/scripts/arm-watcher.sh "<your-tree>" --install
+# --runner "claude -p"  (default; or "codex exec", "gemini -p", an API loop)
+# --cron   "30 7 * * 1-5"  (default: 07:30 on weekdays)
+```
+
+It drops `knowledge/watcher-prompt.txt` into the tree and adds the cron line. Runner- and
+source-agnostic — pick the backend for where the files actually live:
+
+| Source | Detection | How to arm | Attribution |
+|---|---|---|---|
+| **git** | `git status` + `git log --since` (else sha256 walk) | local cron, **or** a cloud Routine on the repo | `git log` author — reliable |
+| **Google Drive** | synced folder → filesystem; or Drive API "modified since" | **synced** (Drive for desktop): local cron on the synced path. **API:** cloud Routine with Drive access | synced → OS owner (weak); API → "last modified by" |
+| **SharePoint / OneDrive** | synced folder → filesystem; or Microsoft Graph "modified since" | **synced** (OneDrive client): local cron on the synced path. **Graph:** cloud Routine + an app registration | synced → OS owner (weak); Graph → "last modified by" |
+| **Plain / network folder** | sha256 filesystem walk | local cron | OS owner, else a configured folder owner |
+
+Two honest rules of thumb:
+
+- **Synced locally = works today, zero API.** The watcher is just a local cron on the synced
+  path; the only loss is *who* edited (OS owner, not the human).
+- **Want real "modified by", or a run that doesn't depend on your laptop?** Use the source's
+  API (git author / Drive / Graph). That needs credentials or an app registration — and note
+  that interactively-authenticated connectors can be **absent in a headless `claude -p` cron**,
+  so API-backed runs usually mean a cloud **Routine**, not local cron.
+
 ---
 
 ## Memory and history
