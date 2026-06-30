@@ -13,7 +13,7 @@ zero, or with very little existing documentation, and you want an agentic-friend
 
 This applies to code **and** to folders of documents — slide decks (`.pptx`), spreadsheets (`.xlsx`),
 docs (`.docx` / `.pdf`), datasets, design assets, research, or a mix. The architecture is identical;
-only the **exploration** changes — and you *can* open these files, you don't have to guess:
+only the **exploration** changes — and you *can* open these files, so do:
 
 - **PDF** — the Read tool reads PDFs directly (use the `pages` range).
 - **Modern Office** (`.pptx` / `.xlsx` / `.docx`) are ZIP+XML. Cleanest: `python` with
@@ -22,9 +22,16 @@ only the **exploration** changes — and you *can* open these files, you don't h
   `unzip -p file.pptx ppt/slides/slide1.xml` (slide text) — crude but it works.
 - **Legacy** `.ppt` / `.xls` / `.doc` need a converter (LibreOffice headless or `pandoc`).
 
-Opening every file is slow and noisy, so **inventory first** (names, types, folders, counts, dates),
-then **open the files that matter** — the ones the interview flagged, or whatever you need to resolve
-ambiguity. The interview tells you *which* files to open; it doesn't replace opening them.
+**Read the actual content by default** — don't stop at filenames. Inventory first to plan, then read
+what's meaningful. Use the interview to learn what to **skip** (files the user doesn't care about —
+archives, old versions, scratch, exports), *not* to whitelist what to open.
+
+**At scale (decentralize).** Reading content costs tokens, and a big tree (hundreds of folders,
+thousands of files) far exceeds any single context — so fan out: **one subagent per leaf folder**
+reads its files, writes that folder's `AGENTS.md`, and returns a one-line summary; then **roll those
+summaries upward** (leaf → mid-folder → root) so no context ever holds the whole tree. Summarize each
+file down to what its doc needs and drop the raw text. For big spreadsheets, read headers + structure
++ a sample of rows, not every cell — a few giant sheets are what blow the budget.
 
 ## Core architecture (always)
 
@@ -48,13 +55,15 @@ ambiguity. The interview tells you *which* files to open; it doesn't replace ope
 ### Phase 1 — Interview the human (in the user's language; conversation only, do NOT open files yet)
 
 Goal: understand the project AND the folder organization that fits *this* person's mental model. For
-non-code folders this phase matters a lot — it tells you which files are worth opening and what they
-mean. Ask (group related questions with AskUserQuestion; otherwise just converse), then reflect a
+non-code folders this phase matters a lot — it tells you what each file means and, crucially, what to
+skip. Ask (group related questions with AskUserQuestion; otherwise just converse), then reflect a
 one-paragraph summary back and confirm before moving on:
 
 - What is the project — domain, purpose, who/what it's for, stage (greenfield vs. existing material)?
 - **What kind of folder is this** — code, documents (decks / sheets / PDFs), data, assets, or mixed?
   What are the deliverables, and how are they named / versioned (e.g. "final", "v2", dates)?
+- **What can be skipped?** Files / subfolders the user doesn't care about — archives, old versions,
+  scratch, raw exports — so reading effort and tokens aren't wasted. This exclusion step is required.
 - Stack / key tools / services (for code), or the tools and formats in play (for documents).
 - How does the user already think about the parts? What are the natural modules / areas / pastinhas?
 - Desired granularity — how deep should docs nest? Any folders that must / must not get their own doc?
@@ -65,9 +74,9 @@ Do not propose a structure yet. First capture intent.
 ### Phase 2 — Explore the contents & build (ask clarifying questions throughout)
 
 1. **Dive in.** Map the real folder tree and how things relate. For **code**, read entry points and key
-   modules. For **documents**, inventory the files first (names, types, counts, dates, groupings), then
-   **open the ones that matter** to understand them — see *Works for any folder* for how to read each
-   format. Be selective; don't open everything.
+   modules. For **documents**, **read the content by default** (not just filenames) — see *Works for
+   any folder* for how to read each format — and **skip only** what the interview marked as not needed
+   plus obvious junk. Inventory first so you read deliberately, not blindly.
 2. **Reconcile** what you find with Phase 1. Surface mismatches and **ask** whenever reality is
    ambiguous ("folder X mixes Y and Z — split or keep as one?"). Keep asking until the plan is clean.
 3. **Pick folders** that are a meaningful unit (service / package / feature / dataset / deliverable set
