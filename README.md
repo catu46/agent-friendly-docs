@@ -106,7 +106,7 @@ source-agnostic — pick the backend for where the files actually live:
 | Source | Detection | How to arm | Attribution |
 |---|---|---|---|
 | **git** | `git status` + `git log --since` (else sha256 walk) | local cron, **or** a cloud Routine on the repo | `git log` author — reliable |
-| **Google Drive** | synced folder → filesystem; or Drive API "modified since" | **synced** (Drive for desktop): local cron on the synced path. **API:** cloud Routine with Drive access | synced → OS owner (weak); API → "last modified by" |
+| **Google Drive** | synced folder → filesystem; or Drive **API / MCP** "modified since" | **synced** (Drive for desktop): local cron on the synced path. **API/MCP:** a cloud Routine (or self-hosted MCP) with Drive access | synced → OS owner (weak); API/MCP → real "last modified by" |
 | **SharePoint / OneDrive** | synced folder → filesystem; or Microsoft Graph "modified since" | **synced** (OneDrive client): local cron on the synced path. **Graph:** cloud Routine + an app registration | synced → OS owner (weak); Graph → "last modified by" |
 | **Plain / network folder** | sha256 filesystem walk | local cron | OS owner, else a configured folder owner |
 
@@ -118,6 +118,11 @@ Two honest rules of thumb:
   API (git author / Drive / Graph). That needs credentials or an app registration — and note
   that interactively-authenticated connectors can be **absent in a headless `claude -p` cron**,
   so API-backed runs usually mean a cloud **Routine**, not local cron.
+- **A Google Drive (or SharePoint) MCP is the cleanest cloud backend** — `list`/`search` for the
+  diff, `get metadata` for real *"modified by"*, `read`/`export` to classify native Google
+  Docs/Sheets/Slides, all with no app registration. Same caveat: a claude.ai-style connector is
+  **session-bound**, so a plain `claude -p` cron won't have it — run it where the connector lives
+  (a Routine) or via a **self-hosted MCP with a service account** any runner can use.
 
 ---
 

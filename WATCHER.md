@@ -81,6 +81,11 @@ and they can be combined:
 - **Source "modified by/at" (Drive / SharePoint / BigQuery, etc.).** Query the
   source API for items changed since `generated`. Use this when the artifacts
   live behind a URL rather than on disk.
+- **An MCP connector (Drive / SharePoint).** The same backend over a Model Context
+  Protocol server: `search` / `list recent` for the diff, `get metadata` for real
+  "last modified by", `read` / `export` to classify native cloud files (Google
+  Docs / Sheets / Slides) — no app registration. The most ergonomic cloud option;
+  availability is runtime-bound (see §10).
 
 > The hash is what decides "changed," not `mtime`. A cloud sync or a re-save can
 > bump `mtime` without changing content; compare `sha256` to avoid false
@@ -432,6 +437,12 @@ place.
   having read access. No access -> no detection.
 - **The watcher needs read access** to the artifacts to classify changes;
   permission gaps degrade it to "something changed, please review."
+- **MCP connectors can be absent in headless runs.** An interactively-authenticated
+  connector (e.g. a claude.ai Google Drive connector) is tied to that session; a
+  `claude -p` cron usually will **not** have it. Run the watcher where the connector
+  is present (a cloud Routine), or use a self-hosted MCP server with a service-account
+  credential so any runner can reach it. (A locally-synced folder sidesteps this
+  entirely — it is just the filesystem — at the cost of weaker attribution.)
 - **Descriptions can drift from artifacts.** A concept is a pointer + description,
   deliberately separate from the artifact, so it can lag reality between runs. The
   `timestamp` tells you how fresh a description is, and the watcher shrinks the
