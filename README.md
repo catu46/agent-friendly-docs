@@ -1,78 +1,166 @@
 # agent-friendly-docs
 
-A Claude Code / cross-agent **skill** that scaffolds an agent-friendly documentation architecture for
-any folder tree — code or documents (decks, spreadsheets, PDFs, datasets, assets) — and keeps it from
-going stale.
+A Claude Code skill that **scaffolds AND maintains** agent-navigable documentation
+for any folder tree — code *or* documents (PowerPoint, Excel, SQL, HTML/dashboards,
+PDFs, datasets). The docs are [OKF](#okf-and-honesty)-conformant, **self-updating**,
+and shipped with a **reconciliation watcher** that keeps them honest even when people
+edit files *outside* Claude Code (duplicating an Excel into `v8`, dropping a new deck
+into a folder, renaming things in Drive/SharePoint).
 
-It produces `AGENTS.md` as the canonical, cross-agent source of truth (the [agents.md](https://agents.md)
-standard) with a one-line `CLAUDE.md` stub so Claude Code auto-loads it. Every meaningful folder gets
-its own self-contained doc, so you can open *just that folder* and your agent still has full context.
+It is built for the real loop: walk into a folder, ask a question, the agent reads the
+files, knows *how far to go*, helps — and the docs feed themselves back (*se retroalimenta*),
+so tomorrow a fresh chat is instantly smart again.
+
+The audience skews non-engineer (strategy consultants, managers, directors), so the
+docs route by reference instead of dumping everything into context.
+
+---
 
 ## What it produces
 
+A thin, eager **front door** in every meaningful folder, plus a lazy **knowledge bundle**
+that is opened only on demand:
+
 ```
-project/
-├── AGENTS.md        # mother: overview + repository map (routing) + keep-current rule
-├── CLAUDE.md        # one line: @AGENTS.md
-├── module-a/
-│   ├── AGENTS.md    # self-contained folder doc + keep-current rule (points upward)
-│   └── CLAUDE.md    # @AGENTS.md
-└── module-b/
-    ├── AGENTS.md
-    └── CLAUDE.md
+your-folder/
+├── CLAUDE.md                  # one-line stub: @AGENTS.md  (the only auto-load bridge)
+├── AGENTS.md                  # THIN router: Rules + pointers (loaded via the CLAUDE.md stub)
+├── knowledge/                 # OKF v0.1 bundle — lazy, opened concept-by-concept
+│   ├── index.md               #   the navigable MAP (what concepts/subfolders exist here)
+│   ├── <concept>.md           #   a DEFINITION (frontmatter + body + cross-links); PATH = its ID
+│   ├── <decision>.md          #   type: decision — a lightweight ADR capturing WHY
+│   ├── log.md                 #   APPEND-ONLY reverse-chronological change history
+│   ├── .okf-state.json        #   per-file snapshot the watcher diffs against
+│   └── _archive/              #   superseded artifacts (e.g. model_v7.xlsx) kept for recall
+└── subfolder/                 # every meaningful subfolder is self-contained:
+    ├── CLAUDE.md              #   open it alone and its context still auto-loads
+    ├── AGENTS.md              #   (carries its own "If you opened only this folder" up-pointer)
+    └── knowledge/ ...         #   its own lazy OKF bundle
 ```
 
-- **`AGENTS.md` is canonical** — read natively by Codex, Cursor, Copilot, Gemini, etc.
-- **`CLAUDE.md` is a stub** (`@AGENTS.md`) — Claude Code only auto-loads `CLAUDE.md`, so the stub
-  bridges it. No content duplication, no symlinks.
-- **Self-updating** — every doc ends with a "Keep this current" rule that tells the agent to refresh
-  the folder's doc after real changes and propagate up to the parent/root *only where needed*.
+**The split is by load-timing, not by topic.** Always-needed and small (rules, scope,
+pointers) lives in `AGENTS.md` and loads eagerly (pulled into context by the `CLAUDE.md`
+stub). Sometimes-needed and large (the map, the definitions, the history) lives in
+`knowledge/` and is opened lazily. The root `AGENTS.md` is the *mother* front door; each
+folder's `AGENTS.md` carries an explicit **"If you opened only this folder"** up-pointer to
+`../AGENTS.md`, so the folder stays useful even in tools (Copilot, Cursor) that scope to the
+opened root and never read upward.
 
-It works for **non-code folders** too — it reads the actual content by default (PDFs natively;
-`.pptx` / `.xlsx` / `.docx` via `python` or `unzip`), and uses the interview to decide which files to
-*skip*.
+`AGENTS.md` is a **router, not a content store**: it holds the rules, a down-pointer into
+`knowledge/index.md`, an up-pointer to the parent, and the "Keep this current" protocol —
+never the definitions and never the full map.
 
-## How it works
+---
 
-1. **Interview** (in your language) — understands the project and the folder organization that fits
-   your mental model. No code is touched yet.
-2. **Explore & build** — maps the real code, asks clarifying questions, proposes the tree, confirms,
-   then writes everything and wires the links.
+## How it works — a discovery loop
+
+There are **no named modes** and no "detect the mode" step. Whatever you have — nothing, thin
+docs, or folders full of `.md` behind a bloated mega-`CLAUDE.md` — gets the **same** target
+architecture; only the ratio of create-vs-reorganize shifts, and that is self-evident from what
+the skill reads.
+
+It runs as an **alternating interview ⇄ read loop**, co-equal — not rigid phases. The
+**interview** (in your language) covers the goals and the organization and — required — asks
+*what to skip* (it decides what to exclude, not what to read). The **reading** opens file
+**content by default** (not just filenames): PDFs natively, modern `.pptx/.xlsx/.docx` as
+ZIP+XML, big spreadsheets as headers + structure + a sample of rows. Reading reveals what *is*;
+you reveal what *matters* and what's *still true* — so the skill re-interviews against the
+evidence ("you said the Q3 model is canonical, but there's a `v8_FINAL_real` — which?") and
+reads deeper until the picture converges. Then it proposes a tree, confirms it, and writes the
+`AGENTS.md` / `knowledge/` scaffold, wires the cross-links, and embeds the self-update protocol
+in every doc. At scale (hundreds of folders) it decentralizes: one subagent per leaf folder,
+rolling summaries leaf → mid → root.
+
+---
+
+## The reconciliation watcher
+
+People change files without git, without an IDE, without Claude Code — so detection cannot
+depend on anyone using Claude Code. On each run the watcher takes a filesystem snapshot
+(`knowledge/.okf-state.json` records `{path, sha256, mtime, size}`) and diffs it against the
+last run — optionally cross-checked with `git diff` or a source API's "modified by/at" for
+Drive/SharePoint — to find added, modified, and deleted files regardless of *how* or *who*
+edited them. It then **classifies each change by reading the changed file** (data-refresh →
+just restamp; `v7→v8` → supersede the old concept and keep it; new artifact → draft a concept;
+schema/abas changed → update the body; deletion → mark deprecated, never erase), applies the
+update append-only, and rewrites the snapshot. If it cannot understand a change it does **not
+guess** — it asks the *last editor* (attributed honestly per source: `git log -1 --format=%an`,
+Drive/SharePoint "last modified by", or the OS owner / a configured folder owner) via an
+`ASKS.md` queue, an issue, Slack, or email. It runs on a schedule — a Claude Code routine in
+the cloud, or a local cron invoking `claude -p`.
+
+---
+
+## Memory and history
+
+Updates are **append-only / supersede — never destructive**. When `v7` becomes `v8`, the old
+concept is *kept* (`status: superseded`, `superseded_by:` the new one, `resource:` pointed at
+the archived `_archive/...v7.xlsx`), the new one is marked `status: active` + `supersedes:`,
+a `decision` concept records *why*, and `log.md` gets one more line. So an agent can always
+recover **what you used to do, and why** — git and Drive version the bytes; this layer adds
+the readable story.
+
+---
 
 ## Install
 
-Clone straight into your Claude Code skills directory:
-
 ```bash
-git clone https://github.com/catu46/agent-friendly-docs.git ~/.claude/skills/agent-friendly-docs
+git clone https://github.com/catu46/agent-friendly-docs ~/.claude/skills/agent-friendly-docs
 ```
 
-That's it — Claude Code picks up the skill automatically. (Only `SKILL.md` and `TEMPLATES.md` matter;
-this README and the license just ride along in the same folder.)
-
-To update later:
-
-```bash
-git -C ~/.claude/skills/agent-friendly-docs pull
-```
+(Or drop the folder into `~/.claude/skills/`.)
 
 ## Use
 
-In any project, run:
+Invoke it explicitly, or just ask in natural language — English or Portuguese:
 
 ```
 /agent-friendly-docs
 ```
 
-…or just ask in natural language — e.g. "organize my folders to be agent-friendly", or in Portuguese
-"organiza minhas pastinhas e deixa agent-friendly".
+> "organize these folders to be agent-friendly"
+> "build a mother CLAUDE.md that routes to per-folder docs"
+> "deixa essas pastinhas agent-friendly"
+> "monta o CLAUDE.md mãe e a documentação pros agentes"
 
-## Português
+### Português
 
-A skill funciona em português: a **entrevista e todas as perguntas acontecem no seu idioma**, e os
-docs são escritos no idioma do projeto. As instruções internas da skill ficam em inglês (padrão), o
-que não afeta a conversa com você.
+Funciona em português de ponta a ponta: a **entrevista** é conduzida no seu idioma e a
+**documentação gerada** é escrita no idioma do projeto. (As instruções internas do skill
+permanecem em inglês — só isso.)
+
+---
+
+## OKF and honesty
+
+The `knowledge/` bundle follows the **Open Knowledge Format (OKF) v0.1**, announced
+**June 12, 2026** by Google Cloud. Lock-in is near-zero: an OKF concept is just a markdown
+file with one required `type` field (plus `title`, `description`, `resource`, `tags`,
+`timestamp`) — readable and portable with or without any tool.
+
+A few things stated plainly:
+
+- **Auto-load is a *harness* feature tied to the filenames `CLAUDE.md` / `AGENTS.md`, not to
+  OKF.** Claude Code reads `CLAUDE.md` (walking from the cwd up the directory tree), **not
+  `AGENTS.md`** — the one-line `@AGENTS.md` stub is what bridges to the front door (and
+  AGENTS.md-native tools read it directly). `index.md` and the concept files do **not**
+  auto-load — they are opened on demand. That lazy boundary is the whole point.
+- `@import` (the `@path` syntax in `CLAUDE.md`) is **eager** — it pulls the whole file into
+  context at load (recursively, up to four hops deep). Use it only for a tiny always-needed
+  core (e.g. a short shared glossary). Never `@import` the knowledge bundle, or you re-bloat
+  context.
+- Descriptions can drift from the artifacts they point at — which is exactly why every doc
+  carries a `timestamp` and why the watcher exists. Plain-filesystem edits may not reveal
+  *who* changed a file; non-git sources need their own "modified by"; the watcher needs read
+  access. Stated up front so nothing is overpromised.
+
+A bundled `validate.py` (Python 3, **stdlib only**, runs anywhere) enforces the shapes:
+both `AGENTS.md` + `CLAUDE.md` present, the stub is exactly `@AGENTS.md`, required frontmatter
+keys, links and `resource:` paths resolve, `knowledge/` has an `index.md`, timestamps parse,
+`status` and supersede pointers are valid — failing on errors and listing warnings.
+
+---
 
 ## License
 
-MIT — see [LICENSE](LICENSE).
+MIT — see [LICENSE](./LICENSE).

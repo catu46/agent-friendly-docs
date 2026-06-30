@@ -1,125 +1,165 @@
 ---
 name: agent-friendly-docs
-description: Scaffold an agent-friendly documentation architecture for any folder tree — code or documents (slide decks, spreadsheets, PDFs, datasets, assets, or a mix) — a canonical root AGENTS.md (cross-agent standard) plus a CLAUDE.md import stub, and a self-contained AGENTS.md + CLAUDE.md stub in each meaningful folder so any folder can be opened in isolation by an AI agent. Every generated doc embeds a self-updating protocol so context never goes stale. Use when starting a project's docs from scratch or with little existing documentation, organizing folders (code OR document/Excel/PowerPoint folders) to be agent-friendly, building a "mother" index doc that routes to per-folder docs, or making CLAUDE.md-based docs agent-agnostic. Triggers (English): "organize folders", "agent-friendly docs", "AGENTS.md", "mother CLAUDE.md", "docs for agents", "document/Excel/PowerPoint folder". Triggers (Portuguese): "organizar pastinhas", "deixar agent-friendly", "documentação para agentes", "CLAUDE.md mãe".
+description: Scaffold AND maintain an agent-navigable documentation architecture for any folder tree — code or documents (slide decks, spreadsheets, PDFs, SQL, HTML/dashboards, datasets, assets, or a mix). Produces a thin router AGENTS.md + a CLAUDE.md import stub in every meaningful folder (each self-contained, so any folder can be opened in isolation by an AI agent) backed by a lazy OKF knowledge/ bundle, and a reconciliation watcher that keeps the docs honest even when non-engineers edit files OUTSIDE Claude Code (duplicating an Excel into v8, dropping a new deck into a folder, renaming in Drive/SharePoint). Every doc embeds a self-updating, append-only protocol so context never goes stale and you can always recover "what we used to do, and why". Use when starting docs from scratch, organizing folders (code OR document/Excel/PowerPoint folders) to be agent-friendly, building a "mother" index that routes to per-folder docs, slimming a bloated CLAUDE.md into a router, or setting up the watcher. Triggers (English): "organize folders", "agent-friendly docs", "AGENTS.md", "mother CLAUDE.md", "docs for agents", "document/Excel/PowerPoint folder", "reconciliation watcher". Triggers (Portuguese): "organizar pastinhas", "deixar agent-friendly", "documentação para agentes", "CLAUDE.md mãe".
 ---
 
 # Agent-Friendly Docs
 
-Scaffold a documentation architecture any AI agent can navigate, with `AGENTS.md` as the cross-agent
-source of truth and `CLAUDE.md` as a thin auto-load stub. Best when starting a project's docs from
-zero, or with very little existing documentation, and you want an agentic-friendly foundation.
+Scaffold and maintain documentation any AI agent can navigate. The north-star loop: walk into a
+folder, ask a question, the agent **reads the files**, knows *how far to go*, helps — and the docs
+**feed themselves back** (*se retroalimenta*), so tomorrow a fresh chat is instantly smart again.
 
-## Works for any folder (not just code)
+The audience skews non-engineer (strategy consultants, managers, directors) who often change files
+outside any IDE/git/Claude Code. So the docs **route by reference** instead of dumping everything
+into context, and a watcher reconciles them on a schedule. Skill instructions stay in English; the
+**docs are written in the project's language**; the **interview is conducted in the user's language**.
 
-This applies to code **and** to folders of documents — slide decks (`.pptx`), spreadsheets (`.xlsx`),
-docs (`.docx` / `.pdf`), datasets, design assets, research, or a mix. The architecture is identical;
-only the **exploration** changes — and you *can* open these files, so do:
+## Survey and adapt — do NOT classify into modes
 
-- **PDF** — the Read tool reads PDFs directly (use the `pages` range).
-- **Modern Office** (`.pptx` / `.xlsx` / `.docx`) are ZIP+XML. Cleanest: `python` with
-  `python-pptx` / `openpyxl` / `python-docx` (`pip install` them if missing). Zero-install fallback
-  with `unzip`: `unzip -p file.xlsx xl/sharedStrings.xml` (spreadsheet text),
-  `unzip -p file.pptx ppt/slides/slide1.xml` (slide text) — crude but it works.
-- **Legacy** `.ppt` / `.xls` / `.doc` need a converter (LibreOffice headless or `pandoc`).
+There are **no named modes** and **no "detect the mode" step.** The TARGET architecture (below) and the
+discovery loop are invariant. Whatever you find — nothing, thin docs, or folders full of `.md` with a
+bloated mega-`CLAUDE.md` — you apply the **same** architecture; only the ratio of create-vs-reorganize
+shifts, and that is self-evident from what you read.
 
-**Read the actual content by default** — don't stop at filenames. Inventory first to plan, then read
-what's meaningful. Use the interview to learn what to **skip** (files the user doesn't care about —
-archives, old versions, scratch, exports), *not* to whitelist what to open.
+The one non-obvious rule: **DECOMPOSE, DON'T COPY.** When existing docs are bloated, route each chunk to
+its layer instead of dumping the wall into `AGENTS.md`:
 
-**At scale (decentralize).** Reading content costs tokens, and a big tree (hundreds of folders,
-thousands of files) far exceeds any single context — so fan out: **one subagent per leaf folder**
-reads its files, writes that folder's `AGENTS.md`, and returns a one-line summary; then **roll those
-summaries upward** (leaf → mid-folder → root) so no context ever holds the whole tree. Summarize each
-file down to what its doc needs and drop the raw text. For big spreadsheets, read headers + structure
-+ a sample of rows, not every cell — a few giant sheets are what blow the budget.
+- a **RULE / scope / what-not-to-touch** → the thin `AGENTS.md` router;
+- a **DEFINITION / reference / data-dictionary** → an OKF concept under `knowledge/`;
+- an **OLD / replaced** thing → a `superseded` concept + a `log.md` line (keep it);
+- a **STALE** claim → ask "still true?" and archive.
 
-## Core architecture (always)
+Never dump the whole wall into `AGENTS.md`. **Preserve everything (supersede, don't delete);** keep the
+ORIGINAL file as a backup (and in git) until the user validates the new tree.
 
-- **`AGENTS.md` is canonical.** All real content lives here. It is the cross-agent open standard
-  (agents.md) — Codex, Cursor, Copilot, Gemini, etc. read it natively.
-- **`CLAUDE.md` is a one-line stub** that imports it: `@AGENTS.md`. Claude Code only auto-loads
-  `CLAUDE.md`, so the stub bridges it. Never duplicate content; never use a symlink (breaks on
-  Windows / in zips / across some git setups).
-- **Every meaningful folder gets its own `AGENTS.md` + `CLAUDE.md` stub**, self-contained so the user
-  can open *just that folder* as the agent's root and still have working context.
-- **Root `AGENTS.md` is the "mother":** project overview + an index that routes to each folder's
-  `AGENTS.md`. Keep it high-level; push detail down into folder docs (progressive disclosure keeps
-  agent context lean).
-- **Language:** conduct the **entire interview and all clarifying questions in the user's language**
-  — match the language they write to you in (e.g. Portuguese for a Portuguese-speaking user). Write
-  the **docs in the project's primary language** (detect from existing files / the user; ask if
-  unclear). Only these skill instructions stay in English.
+## The architecture (hybrid — final)
 
-## Workflow — two phases (always run both, in order)
+- **`CLAUDE.md`** = one-line stub `@AGENTS.md`. The only auto-load bridge besides `AGENTS.md`.
+- **`AGENTS.md`** = the THIN front door, a **ROUTER, not a content store**. Holds ONLY: (a) **Rules** —
+  how to act, scope / how far to go, what NOT to touch; (b) a lazy **DOWN pointer** into the bundle
+  (`Detailed knowledge → ./knowledge/index.md ; open the concept you need`); (c) an **UP pointer**,
+  `## If you opened only this folder → ../AGENTS.md`; (d) the **Keep this current** protocol. It does
+  NOT hold definitions and does NOT hold the full map.
+- **`knowledge/`** = OKF v0.1 bundle, lazy, opened on demand:
+  - `index.md` — the navigable **MAP** (what concepts/subfolders exist here);
+  - **concept files** — DEFINITIONS. OKF frontmatter (required `type` + `title` + `timestamp`; plus
+    `description`, `resource`, `tags`), a markdown body (meaning / schema / abas / caveats), and
+    cross-links to other concepts. **The file PATH is the concept's ID.** `resource` points at the
+    REAL artifact (relative path to the `.xlsx`/`.pptx`/`.sql`, or a SharePoint/Drive/BigQuery URL) —
+    the concept is a **pointer + description, separate from the artifact**;
+  - `log.md` — APPEND-ONLY reverse-chronological change history.
+- **Every meaningful folder** gets its own thin `AGENTS.md` + `CLAUDE.md` stub, self-contained. The root
+  `AGENTS.md` is the *mother* front door.
 
-### Phase 1 — Interview the human (in the user's language; conversation only, do NOT open files yet)
+Exact shapes and copy-paste blocks: [TEMPLATES.md](TEMPLATES.md).
 
-Goal: understand the project AND the folder organization that fits *this* person's mental model. For
-non-code folders this phase matters a lot — it tells you what each file means and, crucially, what to
-skip. Ask (group related questions with AskUserQuestion; otherwise just converse), then reflect a
-one-paragraph summary back and confirm before moving on:
+## Split by LOAD-TIMING, not by category
 
-- What is the project — domain, purpose, who/what it's for, stage (greenfield vs. existing material)?
-- **What kind of folder is this** — code, documents (decks / sheets / PDFs), data, assets, or mixed?
-  What are the deliverables, and how are they named / versioned (e.g. "final", "v2", dates)?
-- **What can be skipped?** Files / subfolders the user doesn't care about — archives, old versions,
-  scratch, raw exports — so reading effort and tokens aren't wasted. This exclusion step is required.
-- Stack / key tools / services (for code), or the tools and formats in play (for documents).
-- How does the user already think about the parts? What are the natural modules / areas / pastinhas?
-- Desired granularity — how deep should docs nest? Any folders that must / must not get their own doc?
-- Docs language, and which agents will consume them.
+- **Always-needed + small** (rules, scope, pointers) → `AGENTS.md`, **eager / auto-loaded**.
+- **Sometimes-needed + large** (the map, the definitions, the history) → `knowledge/`, **lazy, on demand**.
+- **`@import`** (the `@path` syntax in `CLAUDE.md`) is **eager** — it pulls the whole file into context at
+  load (recursively, up to four hops). Use it ONLY for a tiny always-needed core (e.g. a short shared
+  glossary). **Never `@import` the bundle** — that re-bloats context. The payoff: a per-folder
+  mega-`CLAUDE.md` (loaded eagerly every chat = token bloat) becomes a ~15-line router that loads almost
+  nothing eagerly and pulls detail on demand.
 
-Do not propose a structure yet. First capture intent.
+## Opened-in-isolation reality (why the up-pointer)
 
-### Phase 2 — Explore the contents & build (ask clarifying questions throughout)
+Auto-load is the harness's job and is **filename-based**. Claude Code walks **up** the
+`CLAUDE.md`/`AGENTS.md` ancestor chain (cwd up to home), so opening a SUBfolder still loads its ancestors
+including the mother. But **other tools (Copilot/Cursor/etc.) often scope only to the opened workspace
+root** and do not read above it. That is why every folder's `AGENTS.md` carries an explicit
+`## If you opened only this folder` section pointing to `../AGENTS.md` — the folder stays useful when
+opened alone (it works as long as the agent can read `../`). "Understand the whole context" means *follow
+the references* (down to local OKF, up to the parent), NOT load everything.
 
-1. **Dive in.** Map the real folder tree and how things relate. For **code**, read entry points and key
-   modules. For **documents**, **read the content by default** (not just filenames) — see *Works for
-   any folder* for how to read each format — and **skip only** what the interview marked as not needed
-   plus obvious junk. Inventory first so you read deliberately, not blindly.
-2. **Reconcile** what you find with Phase 1. Surface mismatches and **ask** whenever reality is
-   ambiguous ("folder X mixes Y and Z — split or keep as one?"). Keep asking until the plan is clean.
-3. **Pick folders** that are a meaningful unit (service / package / feature / dataset / deliverable set
-   / topic / client / asset group). Skip generated & dependency dirs *(code)* — `node_modules`,
-   `dist`, `build`, `.git`, `vendor`, `.next`, `target` — plus system cruft (`.DS_Store`, temp files)
-   and trivial leaves. Depth 1–2 unless complexity warrants more. Don't over-fragment.
-4. **Show the proposed tree** (which folders get docs) and confirm before writing.
-5. **Write** root `AGENTS.md` + `CLAUDE.md` stub, then each folder's `AGENTS.md` + stub.
-6. **Wire links:** root indexes every child with a one-line description; each child links up to its
-   parent. No content duplicated across levels.
-7. **Embed the self-updating protocol in every `AGENTS.md`** (see below). Non-negotiable.
-8. **Report** the final tree and exactly what the user should fill in next.
+## Memory and history — keep current AND keep history
 
-## Self-updating context — MUST embed in every generated doc
+The self-update protocol is **APPEND-ONLY / SUPERSEDE, never destructive.** Distinguish current-state
+(active concepts) from memory (history):
 
-The whole point is that the docs never go stale, so the upkeep rule lives **inside the docs**, not only
-in this skill. Every `AGENTS.md` you generate MUST end with a "Keep this current" section (use the
-canonical blocks in [TEMPLATES.md](TEMPLATES.md) verbatim). The rule it states:
+- Concept frontmatter carries `status: active|superseded|deprecated`, plus `supersedes:` /
+  `superseded_by:` (relative paths).
+- When an artifact is replaced (**v7 → v8**): KEEP v7's concept, set `status: superseded` +
+  `superseded_by → v8`, and repoint its `resource` at the **archived** old file (e.g.
+  `./_archive/...v7.xlsx`, or the source's version history). Set v8 `status: active` + `supersedes → v7`.
+  Append a `log.md` line. **Never delete the old concept.**
+- A **`type: decision`** concept is a lightweight ADR capturing the WHY ("we used to compute NRR including
+  X; changed to exclude it in Q2 because Y").
+- **Recover use-case:** an agent finds the superseded concept → follows `resource` to the archived
+  artifact + reads the linked decision → recovers the old approach AND its rationale. Honesty: git / Drive
+  / SharePoint version the **bytes**; this layer adds the readable **story**.
 
-> After making real code/content changes in a folder, **before finishing**: update **this** folder's
-> `AGENTS.md` if the change touched its purpose, key files, conventions, or how-to — then walk **up**
-> and check the parent `AGENTS.md` (and on up to the root: repository map, overview, shared
-> conventions), updating those **only at the levels the change actually affects**. Change only what the
-> edit touched; leave the rest alone.
+## Works for any folder — read content by default
 
-Folder docs point the update **upward** (folder → parent → root). The root doc states the global rule
-so it applies to every agent working anywhere in the repo.
+This applies to code **and** to document folders. The architecture is identical; only the reading
+changes — and you *can* open these files, so **read the content by default, not just filenames.** The
+interview decides what to **skip**, not what to open.
 
-Templates for all files: [TEMPLATES.md](TEMPLATES.md).
+- **PDF** — the Read tool reads PDFs natively via the `pages` range (max 20 pages/request; a range is
+  **required** above 10 pages).
+- **Modern `.pptx` / `.xlsx` / `.docx`** are ZIP+XML. Cleanest: `python-pptx` / `openpyxl` /
+  `python-docx` (third-party — `pip install` if missing). Zero-install fallback:
+  `unzip -p file.xlsx xl/sharedStrings.xml`, `unzip -p file.pptx ppt/slides/slide1.xml`,
+  `unzip -p file.docx word/document.xml`, then strip tags (iterate all parts; `sharedStrings.xml` is the
+  string *pool*, cell→string mapping lives in `xl/worksheets/sheetN.xml` — the libraries reconstruct it).
+- **Legacy `.doc` / `.ppt` / `.xls`** are binary, not ZIP. On macOS `.doc` has a zero-install path:
+  `textutil -convert txt old.doc`. `.ppt` / `.xls` need LibreOffice headless:
+  `soffice --headless --convert-to txt|csv file.ppt`. (pandoc cannot read legacy binary Office files.)
+- **Big spreadsheets** — never dump every cell. Read the used range cheaply, then headers + dtypes + ~20
+  sample rows (`openpyxl` `read_only=True`, bounded `iter_rows`).
 
-## Migration (existing CLAUDE.md with content)
+## The discovery loop (interview ⇄ read — co-equal, alternating)
 
-When folders already use `CLAUDE.md` to hold content:
-1. Move/rename the content into `AGENTS.md` in the same folder.
-2. Replace `CLAUDE.md` with the `@AGENTS.md` stub.
-3. Add the "Keep this current" section if missing.
-4. Preserve everything; never delete content silently. Go folder by folder, root first.
+Understanding a real, messy tree is **iterative, not linear phases.** The interview and the reading are
+**co-equal and alternate** — neither is subordinate. Reading reveals WHAT IS; the human reveals WHAT
+MATTERS and WHAT'S STILL TRUE.
 
-## Rules
+1. **Interview** (in the user's language): goals, what to **SKIP** (required exclusion step), what's
+   stale. Group questions; don't interrogate forever.
+2. **Read**: survey the tree, then read the **content** the answers point to — by default.
+3. **Re-interview**, sharper and evidence-based: *"you said the Q3 model is canonical, but there's v8,
+   v8_FINAL, v8_FINAL_real — which? this CLAUDE.md claims X but the data shows Y — stale?"*
+4. **Read deeper** → … **converge.** Usually 2–3 rounds (more for messy trees). **Stop** when reading
+   stops surprising and the human confirms the picture.
+5. Then **propose** the tree, **confirm**, and **BUILD**: write `AGENTS.md` + `knowledge/`, wire links,
+   embed the self-update protocol, and write `knowledge/.okf-state.json`.
 
-- One source of truth per fact. Root = global; folder = local; never repeat across levels.
-- The "Keep this current" section is **required output**, not optional.
-- Keep each file short — agents pay a token cost for every line loaded.
-- Prefer links over copies. A folder doc may link to a sibling instead of restating it.
-- Don't invent project facts. Leave `<placeholder>` / `TODO` markers where you lack info and tell the
-  user exactly what to fill in.
+**At scale (hundreds of folders), DECENTRALIZE:** one subagent per leaf folder reads its files and writes
+that folder's docs; roll summaries **leaf → mid → root** so no context ever holds the whole tree.
+
+**Keep this current** (embedded in every `AGENTS.md` and concept): after real changes, update this
+folder's doc + APPEND to `log.md` + restamp `timestamp`; SUPERSEDE (never delete) anything replaced; then
+walk UP to parent/root **only where the change actually affects them**. Change only what the edit touched.
+
+## The reconciliation watcher
+
+How the docs self-feed when people edit **outside** Claude Code: a snapshot in `knowledge/.okf-state.json`
+records `{path, sha256, mtime, size}`; each run scans the filesystem (and/or `git diff`, and/or a source
+API's "modified by/at") and diffs against it to find added/modified/deleted files — **independent of how
+or who edited.** It classifies each change by reading the file (data-refresh → restamp; v7→v8 → supersede;
+new artifact → draft a concept; schema change → update the body; deletion → mark deprecated), applies the
+update append-only, and rewrites the snapshot. If it cannot understand a change it does **not guess** — it
+asks the **last editor** (attributed honestly per source) via a configurable channel. It runs on a
+schedule (a Claude Code routine in the cloud, or a local cron invoking `claude -p`). Full spec and the
+copy-paste agent prompt: **[WATCHER.md](WATCHER.md).**
+
+## Honesty notes (state these plainly)
+
+- **OKF is v0.1** (announced June 12, 2026 by Google Cloud). Near-zero lock-in — it is just markdown +
+  one required `type` field.
+- **Auto-load is a harness feature tied to the filenames `CLAUDE.md` / `AGENTS.md`, not to OKF.** Claude
+  Code reads `CLAUDE.md` (walking cwd up the tree), **not `AGENTS.md`** — the `@AGENTS.md` stub bridges
+  it (AGENTS.md-native tools read it directly). `index.md` and concept files **do not auto-load** — they
+  are opened on demand. That lazy boundary is the whole point.
+- **Descriptions can drift** from the artifacts they point at — which is exactly why every doc carries a
+  `timestamp` and why the watcher exists. Plain-filesystem edits may not reveal *who*; non-git sources need
+  their own "modified by"; the watcher needs read access.
+
+## Validate
+
+A bundled **[scripts/validate.py](scripts/validate.py)** (Python 3, **stdlib only**, runs anywhere)
+enforces the shapes: both `AGENTS.md` + `CLAUDE.md` present, the stub is exactly `@AGENTS.md`, required
+frontmatter keys, links and `resource:` paths resolve, `knowledge/` has an `index.md`, timestamps parse,
+`status` and supersede pointers are valid — failing on errors and listing warnings. Run it after building
+and after every watcher pass.
