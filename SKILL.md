@@ -13,10 +13,18 @@ zero, or with very little existing documentation, and you want an agentic-friend
 
 This applies to code **and** to folders of documents — slide decks (`.pptx`), spreadsheets (`.xlsx`),
 docs (`.docx` / `.pdf`), datasets, design assets, research, or a mix. The architecture is identical;
-only the **exploration** changes. When files are opaque/binary you can't read them cheaply, so the
-**interview (Phase 1) carries most of the reliability** — lean on it, and inventory the files (names,
-types, folders, counts, latest version) instead of parsing contents. Sample or extract text from a few
-key files only if the user asks and the tooling allows.
+only the **exploration** changes — and you *can* open these files, you don't have to guess:
+
+- **PDF** — the Read tool reads PDFs directly (use the `pages` range).
+- **Modern Office** (`.pptx` / `.xlsx` / `.docx`) are ZIP+XML. Cleanest: `python` with
+  `python-pptx` / `openpyxl` / `python-docx` (`pip install` them if missing). Zero-install fallback
+  with `unzip`: `unzip -p file.xlsx xl/sharedStrings.xml` (spreadsheet text),
+  `unzip -p file.pptx ppt/slides/slide1.xml` (slide text) — crude but it works.
+- **Legacy** `.ppt` / `.xls` / `.doc` need a converter (LibreOffice headless or `pandoc`).
+
+Opening every file is slow and noisy, so **inventory first** (names, types, folders, counts, dates),
+then **open the files that matter** — the ones the interview flagged, or whatever you need to resolve
+ambiguity. The interview tells you *which* files to open; it doesn't replace opening them.
 
 ## Core architecture (always)
 
@@ -40,9 +48,9 @@ key files only if the user asks and the tooling allows.
 ### Phase 1 — Interview the human (in the user's language; conversation only, do NOT open files yet)
 
 Goal: understand the project AND the folder organization that fits *this* person's mental model. For
-non-code folders this phase matters most — the files won't explain themselves. Ask (group related
-questions with AskUserQuestion; otherwise just converse), then reflect a one-paragraph summary back and
-confirm before moving on:
+non-code folders this phase matters a lot — it tells you which files are worth opening and what they
+mean. Ask (group related questions with AskUserQuestion; otherwise just converse), then reflect a
+one-paragraph summary back and confirm before moving on:
 
 - What is the project — domain, purpose, who/what it's for, stage (greenfield vs. existing material)?
 - **What kind of folder is this** — code, documents (decks / sheets / PDFs), data, assets, or mixed?
@@ -57,8 +65,9 @@ Do not propose a structure yet. First capture intent.
 ### Phase 2 — Explore the contents & build (ask clarifying questions throughout)
 
 1. **Dive in.** Map the real folder tree and how things relate. For **code**, read entry points and key
-   modules. For **documents / binary files** (`.pptx`, `.xlsx`, `.pdf`, …), inventory names, types,
-   counts, dates, and groupings — don't try to parse every file; rely on the interview for meaning.
+   modules. For **documents**, inventory the files first (names, types, counts, dates, groupings), then
+   **open the ones that matter** to understand them — see *Works for any folder* for how to read each
+   format. Be selective; don't open everything.
 2. **Reconcile** what you find with Phase 1. Surface mismatches and **ask** whenever reality is
    ambiguous ("folder X mixes Y and Z — split or keep as one?"). Keep asking until the plan is clean.
 3. **Pick folders** that are a meaningful unit (service / package / feature / dataset / deliverable set

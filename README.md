@@ -28,8 +28,8 @@ project/
 - **Self-updating** — every doc ends with a "Keep this current" rule that tells the agent to refresh
   the folder's doc after real changes and propagate up to the parent/root *only where needed*.
 
-It works for **non-code folders** too — for opaque files (`.pptx`, `.xlsx`, `.pdf`) it leans on the
-interview and a file inventory instead of parsing contents.
+It works for **non-code folders** too — it actually opens what matters (PDFs natively; `.pptx` /
+`.xlsx` / `.docx` via `python` or `unzip`), using the interview to decide *which* files to open.
 
 ## How it works
 
