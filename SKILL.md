@@ -181,3 +181,13 @@ frontmatter keys, links and `resource:` paths resolve, `knowledge/` has an `inde
 `status` and supersede pointers are valid — failing on errors and listing warnings. Run it after building
 and after every watcher pass. It is the **shape** half of acceptance; pair it with the **fresh-eyes**
 comprehension check (loop step 6) before declaring a tree done.
+
+## Visualize (optional)
+
+`scripts/graph.py` turns any `knowledge/` bundle into a **self-contained interactive graph**:
+`python3 scripts/graph.py <tree>` writes `knowledge-graph.html` (nodes = docs, edges = cross-links +
+`supersedes`; colored by `type`, superseded faded, click a node to open it). You never hand-edit the HTML —
+it is **generated**, so re-running the script (or letting the **watcher / "Keep this current" step** call
+it) keeps the visual tree in sync with the docs. The graph data is embedded (nothing about your content
+leaves the page); the render library loads from a CDN, or pass `--vendor <path>` for a fully offline file.
+The graph shines in the OKF-bundle shape; a single-`index.md` folder has little to interconnect.

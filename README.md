@@ -137,6 +137,23 @@ the readable story.
 
 ---
 
+## Visualize
+
+Because the `knowledge/` bundle is already a graph (concepts = nodes; cross-links and `supersedes` =
+edges), `scripts/graph.py` renders it as a **self-contained interactive HTML** — Obsidian-style, colored
+by type, superseded nodes faded, click to open:
+
+```bash
+python3 ~/.claude/skills/agent-friendly-docs/scripts/graph.py "<your-tree>"
+# writes <your-tree>/knowledge-graph.html
+```
+
+You never edit the HTML — it is generated, so the watcher (or the "Keep this current" step) regenerates it
+and the visual tree tracks the docs. The graph data is embedded so nothing about your content leaves the
+page; the render library loads from a CDN, or use `--vendor <path>` for a fully offline file.
+
+---
+
 ## Install
 
 ```bash

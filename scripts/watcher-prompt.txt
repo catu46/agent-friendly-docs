@@ -60,4 +60,6 @@ through any tool — and bring the co-located docs back in sync.
    freshly scanned {path,sha256,mtime,size} (each path relative to THIS knowledge/ dir).
 
 7. REPORT. Summarize: counts of added/modified/deleted, what you applied, what you
-   queued as asks. Run the validate script if present and report PASS/FAIL.
+   queued as asks. Run the validate script if present and report PASS/FAIL. If a graph
+   generator (scripts/graph.py) is present, regenerate knowledge-graph.html so the
+   visual tree tracks the docs.
