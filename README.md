@@ -110,7 +110,7 @@ source-agnostic — pick the backend for where the files actually live:
 | **SharePoint / OneDrive** | synced folder → filesystem; or Microsoft Graph "modified since" | **synced** (OneDrive client): local cron on the synced path. **Graph:** cloud Routine + an app registration | synced → OS owner (weak); Graph → "last modified by" |
 | **Plain / network folder** | sha256 filesystem walk | local cron | OS owner, else a configured folder owner |
 
-Two honest rules of thumb:
+Three honest rules of thumb:
 
 - **Synced locally = works today, zero API.** The watcher is just a local cron on the synced
   path; the only loss is *who* edited (OS owner, not the human).
@@ -170,8 +170,8 @@ permanecem em inglês — só isso.)
 
 The `knowledge/` bundle follows the **Open Knowledge Format (OKF) v0.1**, announced
 **June 12, 2026** by Google Cloud. Lock-in is near-zero: an OKF concept is just a markdown
-file with one required `type` field (plus `title`, `description`, `resource`, `tags`,
-`timestamp`) — readable and portable with or without any tool.
+file with one required `type` field (plus `title`, `description`, `resource`, `status`,
+`supersedes`/`superseded_by`, `tags`, `timestamp`) — readable and portable with or without any tool.
 
 A few things stated plainly:
 

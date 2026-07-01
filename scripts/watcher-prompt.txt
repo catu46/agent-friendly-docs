@@ -57,7 +57,7 @@ through any tool — and bring the co-located docs back in sync.
    to ASKS.md). Leave the change flagged, not silently applied.
 
 6. REWRITE SNAPSHOT. Set generated=<now ISO-8601 UTC> and replace files[] with the
-   freshly scanned {path,sha256,mtime,size}.
+   freshly scanned {path,sha256,mtime,size} (each path relative to THIS knowledge/ dir).
 
 7. REPORT. Summarize: counts of added/modified/deleted, what you applied, what you
    queued as asks. Run the validate script if present and report PASS/FAIL.

@@ -50,7 +50,11 @@ The watcher keeps one snapshot per knowledge subtree:
 artifact sitting in the documented folder beside `knowledge/` (e.g.
 `financials/Plan_v7.xlsx`) is `../Plan_v7.xlsx`, while a copy kept inside the
 bundle is `_archive/…` — matching the paths in TEMPLATES.md's `.okf-state.json`
-(`../models/…`, `_archive/…`). `sha256` is the content hash (the source of truth
+(`../models/…`, `_archive/…`). Layout is flexible: `_archive/` may sit inside
+`knowledge/` or beside it, and concepts may live at the `knowledge/` root or in
+typed subfolders — `validate.py` is agnostic to those names. The one rule: keep
+every `resource:` / `supersedes:` path relative to the **file that holds it**, and
+every snapshot `path` relative to **this** `knowledge/` dir. `sha256` is the content hash (the source of truth
 for "did the bytes change"). `mtime` and `size` are cheap pre-filters and useful
 tie-breakers.
 
@@ -367,7 +371,8 @@ GOAL: detect changes made to the real artifacts since the last run — by anyone
 through any tool — and bring the co-located docs back in sync.
 
 1. LOCATE SNAPSHOTS. Find every knowledge/.okf-state.json under the tree. Treat
-   each owning folder as a scope.
+   each owning folder as a scope. (If a scope has no snapshot yet, treat this run
+   as the baseline: scan, write .okf-state.json, and report it as initialized.)
 
 2. DETECT. For each scope, rebuild current file state (respect exclusions). Use
    the strongest backend available:
@@ -416,7 +421,7 @@ through any tool — and bring the co-located docs back in sync.
    to ASKS.md). Leave the change flagged, not silently applied.
 
 6. REWRITE SNAPSHOT. Set generated=<now ISO-8601 UTC> and replace files[] with the
-   freshly scanned {path,sha256,mtime,size}.
+   freshly scanned {path,sha256,mtime,size} (each path relative to THIS knowledge/ dir).
 
 7. REPORT. Summarize: counts of added/modified/deleted, what you applied, what you
    queued as asks. Run the validate script if present and report PASS/FAIL.

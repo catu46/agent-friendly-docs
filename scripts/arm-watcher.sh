@@ -37,7 +37,7 @@ TARGET="$(cd "$TARGET" && pwd)"
 mkdir -p "$TARGET/knowledge"
 cp "$HERE/watcher-prompt.txt" "$TARGET/knowledge/watcher-prompt.txt"
 
-LINE="$CRON  cd $TARGET && $RUNNER \"\$(cat knowledge/watcher-prompt.txt)\" >> knowledge/.watcher.log 2>&1"
+LINE="$CRON  cd \"$TARGET\" && $RUNNER \"\$(cat knowledge/watcher-prompt.txt)\" >> knowledge/.watcher.log 2>&1"
 
 echo "Prompt installed -> $TARGET/knowledge/watcher-prompt.txt"
 echo "Runner          -> $RUNNER"
@@ -48,7 +48,7 @@ echo
 
 if [ "$INSTALL" -eq 1 ]; then
   TMP="$(mktemp)"
-  crontab -l 2>/dev/null | grep -vF "cd $TARGET && " > "$TMP" || true
+  crontab -l 2>/dev/null | grep -vF "cd \"$TARGET\" && " > "$TMP" || true
   echo "$LINE" >> "$TMP"
   crontab "$TMP"
   rm -f "$TMP"

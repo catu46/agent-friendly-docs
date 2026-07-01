@@ -43,7 +43,8 @@ ORIGINAL file as a backup (and in git) until the user validates the new tree.
 - **`knowledge/`** = OKF v0.1 bundle, lazy, opened on demand:
   - `index.md` — the navigable **MAP** (what concepts/subfolders exist here);
   - **concept files** — DEFINITIONS. OKF frontmatter (required `type` + `title` + `timestamp`; plus
-    `description`, `resource`, `tags`), a markdown body (meaning / schema / abas / caveats), and
+    `description`, `resource`, `status`/`supersedes`/`superseded_by`, `tags`), a markdown body (meaning /
+    schema / abas / caveats), and
     cross-links to other concepts. **The file PATH is the concept's ID.** `resource` points at the
     REAL artifact (relative path to the `.xlsx`/`.pptx`/`.sql`, or a SharePoint/Drive/BigQuery URL) —
     the concept is a **pointer + description, separate from the artifact**;
@@ -65,9 +66,10 @@ Exact shapes and copy-paste blocks: [TEMPLATES.md](TEMPLATES.md).
 
 ## Opened-in-isolation reality (why the up-pointer)
 
-Auto-load is the harness's job and is **filename-based**. Claude Code walks **up** the
-`CLAUDE.md`/`AGENTS.md` ancestor chain (cwd up to home), so opening a SUBfolder still loads its ancestors
-including the mother. But **other tools (Copilot/Cursor/etc.) often scope only to the opened workspace
+Auto-load is the harness's job and is **filename-based**. Claude Code walks **up** the `CLAUDE.md`
+ancestor chain (cwd up to home) — and each `CLAUDE.md` imports its folder's `@AGENTS.md` — so opening a
+SUBfolder still loads its ancestors' routers including the mother's. (It reads `CLAUDE.md`, not `AGENTS.md`
+directly — the stub is the bridge.) But **other tools (Copilot/Cursor/etc.) often scope only to the opened workspace
 root** and do not read above it. That is why every folder's `AGENTS.md` carries an explicit
 `## If you opened only this folder` section pointing to `../AGENTS.md` — the folder stays useful when
 opened alone (it works as long as the agent can read `../`). "Understand the whole context" means *follow

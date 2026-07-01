@@ -42,6 +42,8 @@ WARN checks (printed, never fail the run):
  10. a concept with status: superseded has no superseded_by
  11. a folder AGENTS.md lacks the "If you opened only this folder" up-pointer
      while a parent AGENTS.md exists
+ 12. an AGENTS.md is missing a load-bearing section
+     ("## Rules" / "## Knowledge" / "## Keep this current")
 """
 
 import argparse
@@ -290,16 +292,18 @@ def check_md(path, root):
     if fm is None:
         return
 
-    # CHECK 3: required frontmatter keys
+    # CHECK 3: required frontmatter keys (type + timestamp + title on every doc)
     if "type" not in fm:
         err(path, 'frontmatter missing required key "type"')
     if "timestamp" not in fm:
         err(path, 'frontmatter missing required key "timestamp"')
-    typ = fm.get("type", "")
-    # AGENTS.md and concept files need a title; index/log do not.
-    require_title = (name == "AGENTS.md") or (typ not in ("index", "log"))
-    if require_title and "title" not in fm:
+    if "title" not in fm:
         err(path, 'frontmatter missing required key "title"')
+    typ = fm.get("type", "")
+    # CHECK 3b: the three fixed-name files must carry their canonical type.
+    expected_type = {"AGENTS.md": "agent-guide", "index.md": "index", "log.md": "log"}.get(name)
+    if expected_type and typ and typ != expected_type:
+        err(path, 'type "%s" should be "%s" for %s' % (typ, expected_type, name))
 
     # CHECK 7: timestamp parses as ISO-8601
     if "timestamp" in fm and not parse_timestamp(fm["timestamp"]):
@@ -329,10 +333,13 @@ def check_md(path, root):
     if status == "superseded" and not fm.get("superseded_by"):
         warn(path, 'status is "superseded" but "superseded_by" is missing')
 
-    # WARN 11: folder AGENTS.md lacks the up-pointer while a parent AGENTS.md exists
+    # WARN 11/12: folder AGENTS.md structure
     if name == "AGENTS.md":
         if UP_POINTER_HEADING not in body and parent_agents_exists(base_dir, root):
             warn(path, 'AGENTS.md lacks the "If you opened only this folder" up-pointer')
+        for heading in ("## Rules", "## Knowledge", "## Keep this current"):
+            if heading not in body:
+                warn(path, 'AGENTS.md is missing the "%s" section' % heading)
 
 
 # --------------------------------------------------------------------------- #
@@ -384,7 +391,7 @@ def main(argv):
         description="Shape checker for agent-friendly-docs (OKF / AGENTS.md) trees. "
                     "Stdlib only. Exits 1 only on an ERROR; WARN findings never fail.",
         formatter_class=argparse.RawDescriptionHelpFormatter,
-        epilog="ERROR checks 1-9 and WARN checks 10-11 are documented in the module "
+        epilog="ERROR checks 1-9 and WARN checks 10-12 are documented in the module "
                "docstring. Add a .okfignore at the root to skip extra paths.",
     )
     parser.add_argument(
