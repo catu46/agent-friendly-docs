@@ -21,16 +21,23 @@ WARN checks (printed, never fail the run):
   8. AGENTS.md missing "## Rules" / "## Knowledge" / "## Keep this current"
   9. AGENTS.md lacks the "If you opened only this folder" up-pointer while a parent
      AGENTS.md exists
+
+Excluded from the walk: dotfiles/dirs, common build/dep dirs (node_modules, venv,
+env, *.egg-info, ...), plus any glob listed one-per-line in a root .okfignore
+(use it to skip folders the rules say NOT to touch: client inputs, old versions).
 """
 
 import argparse
 import datetime
+import fnmatch
 import os
 import re
 import sys
 
 EXCLUDED = {".git", "node_modules", "dist", "build", ".next", "target",
-            "vendor", "__pycache__", "_archive"}
+            "vendor", "__pycache__", "_archive",
+            "venv", "env", ".venv"}          # Python virtualenvs
+EXCLUDED_GLOBS = ("*.egg-info",)             # matched against the basename
 EXPECTED_TYPE = {"AGENTS.md": "agent-guide", "index.md": "index", "log.md": "log"}
 UP_POINTER = "## If you opened only this folder"
 LINK_RE = re.compile(r"\[[^\]]*\]\(([^)]+)\)")
@@ -114,8 +121,35 @@ def check_links(path, body, base):
             err(path, 'markdown link does not resolve: "%s"' % t)
 
 
-def excluded(name):
-    return name in EXCLUDED or name.startswith(".")
+def load_ignore_patterns(root):
+    """Read an optional .okfignore at the root: one glob per line, '#' comments
+    and blank lines skipped, trailing '/' stripped. Lets a lite+ tree exclude
+    folders the rules say NOT to touch (client inputs, old versions)."""
+    patterns = []
+    ignore_file = os.path.join(root, ".okfignore")
+    if os.path.isfile(ignore_file):
+        try:
+            with open(ignore_file, encoding="utf-8") as f:
+                for line in f:
+                    s = line.strip()
+                    if s and not s.startswith("#"):
+                        patterns.append(s.rstrip("/"))
+        except OSError:
+            pass
+    return patterns
+
+
+def excluded(name, relpath="", ignore_patterns=()):
+    if name in EXCLUDED or name.startswith("."):
+        return True
+    if any(fnmatch.fnmatch(name, g) for g in EXCLUDED_GLOBS):
+        return True
+    relpath = relpath.replace(os.sep, "/")
+    for pat in ignore_patterns:
+        if fnmatch.fnmatch(name, pat) or fnmatch.fnmatch(relpath, pat) \
+                or fnmatch.fnmatch(relpath, pat + "/*"):
+            return True
+    return False
 
 
 def has_content(dirpath):
@@ -162,6 +196,10 @@ def check_md(path, root):
     name = os.path.basename(path)
     check_links(path, body if fm is not None else text, base)
     if fm is None:
+        # A canonical fixed-name doc must carry frontmatter; silently passing one
+        # with its whole `---` block deleted would defeat the type/title checks.
+        if name in EXPECTED_TYPE:
+            err(path, "missing YAML frontmatter (canonical docs require type + title + timestamp)")
         return
     for k in ("type", "title", "timestamp"):
         if k not in fm:
@@ -181,8 +219,10 @@ def check_md(path, root):
 
 def run(root):
     md_files = []
+    ignore_patterns = load_ignore_patterns(root)
     for dirpath, dirnames, filenames in os.walk(root):
-        dirnames[:] = [d for d in dirnames if not excluded(d)]
+        dirnames[:] = [d for d in dirnames if not excluded(
+            d, os.path.relpath(os.path.join(dirpath, d), root), ignore_patterns)]
         if has_content(dirpath):
             miss = [f for f in ("AGENTS.md", "CLAUDE.md") if f not in filenames]
             if miss:

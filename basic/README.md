@@ -148,7 +148,15 @@ python3 scripts/validate.py <tree>
 
 It checks that `AGENTS.md` + `CLAUDE.md` are present, the stub is exactly `@AGENTS.md`, the router has
 its sections and points to `./index.md`, `index.md` and `log.md` exist, timestamps parse, and the
-up-pointer is there.
+up-pointer is there. It skips dotfiles and common build/dep dirs (`node_modules`, `venv`, `env`,
+`*.egg-info`, …); to skip folders you deliberately don't document (client inputs, old versions), add a
+`.okfignore` at the tree root — one glob per line, `#` comments allowed.
+
+`scripts/artifact-diff.py` is the watcher's **materiality gate** for `.xlsx/.pptx/.docx/.pdf`: it
+fingerprints each file's structure (sheets/tabs, slide/section counts + titles, page counts) against
+a baseline under `.okf/fingerprints/`, so cosmetic edits are ignored and only changes to *what the
+folder contains* are reported. Critical files listed in `.okf/always-ask` get a full `--detail` diff
+(every cell/paragraph). See [WATCHER.md](WATCHER.md).
 
 ---
 

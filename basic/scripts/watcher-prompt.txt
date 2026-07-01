@@ -41,6 +41,18 @@ inventing it here.
        `soffice --headless --convert-to txt|csv`.
      - big xlsx: read the <dimension> range + headers + ~20 sample rows only —
        enough to classify, not the whole grid.
+   MATERIALITY GATE — index.md exists to say WHAT THE FOLDER CONTAINS, so act only on
+   a change that alters that. For .xlsx/.pptx/.docx/.pdf, if scripts/artifact-diff.py
+   is present, run
+   `python3 scripts/artifact-diff.py diff <file> .okf/fingerprints/<relpath>.json`.
+   By default it is STRUCTURAL — it reports only shape/inventory changes: a sheet/tab
+   added or removed, a header relabeled, a slide/section added/removed/retitled, a
+   page-count change ("CHANGED sheets: Modelo -> Modelo | Cenario_C"). A cosmetic edit
+   — a retuned formula constant, an input nudged 100->120, a reworded bullet, a typo —
+   is "no material change": DO NOT touch index.md/log.md or ask for it. ONLY if the
+   file matches a glob in .okf/always-ask re-run with `--detail` to surface every
+   cell/paragraph and always ask. (No baseline the first time -> "initialized"; you
+   set it in step 6.)
    Pick one class: data-refresh | new-version (v7->v8) | new-file | structural
    | deletion.
 
@@ -73,15 +85,23 @@ inventing it here.
    the parent/root AGENTS.md + index.md only if the change affects global
    rules or the folder map; otherwise stop at this folder.
 
-5. WHEN UNSURE, ASK — never guess. Attribute the last editor honestly by
-   source: git -> `git log -1 --format=%an -- <file>`; Drive/SharePoint ->
-   the item's "last modified by" (via API or MCP); plain filesystem -> the OS
-   file owner (often an account, not the human who edited it); else a
-   configured folder owner. STATE which source the name came from. Deliver
-   via the configured channel — default: append to ASKS.md at the folder
-   root, recording the file, the detected change, what's unclear, the
-   attributed editor, and the attribution source. Leave the change flagged,
-   not silently applied to index.md/log.md.
+5. WHEN UNSURE, ASK — never guess. Also read an optional .okf/always-ask at
+   the tree root (one glob per line, '#' comments): any change to a matching
+   file is ALWAYS queued as an ask and never auto-applied, however confident
+   you are — use it for critical models where a silent edit is unacceptable.
+   Attribute the last editor honestly by source: git ->
+   `git log -1 --format=%an -- <file>`; Drive/SharePoint -> the item's "last
+   modified by" (via API or MCP); plain filesystem -> the OS file owner (often
+   an account, not the human who edited it); else a configured folder owner.
+   STATE which source the name came from. Deliver via the configured channel —
+   default: append to ASKS.md at the folder root. ASKS.md is append-only; add
+   one block per question:
+       ## <ISO-8601 UTC> — <file>
+       - change: <what changed, incl. the exact artifact-diff lines if any>
+       - unclear: <the specific question>
+       - editor: <name> (source: git|Drive|SharePoint|filesystem|configured)
+       - status: open
+   Leave the change flagged, not silently applied to index.md/log.md.
 
 6. REWRITE SNAPSHOT. Set generated=<now, ISO-8601 UTC> and replace files[]
    with the freshly scanned {path,sha256,mtime,size} for every artifact this

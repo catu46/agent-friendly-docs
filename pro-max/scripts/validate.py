@@ -29,8 +29,8 @@ but never fail the run.
 ERROR checks (any failure -> exit 1):
   1. every non-excluded directory with content has BOTH AGENTS.md and CLAUDE.md
   2. each CLAUDE.md is exactly "@AGENTS.md" (one optional leading HTML-comment line allowed)
-  3. every .md with YAML frontmatter has required keys: type + timestamp
-     (AGENTS.md and concept files also need title)
+  3. every .md with YAML frontmatter has required keys: type + title + timestamp
+     (title is required on every frontmatter doc, not just AGENTS.md/concepts)
   4. every relative markdown link resolves to an existing file
   5. every relative "resource:" path exists on disk (URLs are skipped)
   6. a knowledge/ subtree has an index.md
@@ -57,7 +57,10 @@ import sys
 DEFAULT_EXCLUDED = {
     ".git", "node_modules", "dist", "build", ".next", "target",
     "vendor", "__pycache__", "_archive",
+    "venv", "env", ".venv",          # Python virtualenvs
 }
+# Always-skipped directory glob patterns (matched against the basename).
+DEFAULT_EXCLUDED_GLOBS = ("*.egg-info",)
 VALID_STATUS = {"active", "superseded", "deprecated"}
 UP_POINTER_HEADING = "## If you opened only this folder"
 
@@ -208,6 +211,8 @@ def dir_excluded(name, relpath, ignore_patterns):
     """Should this directory be pruned from the walk? (root is never pruned)."""
     if name in DEFAULT_EXCLUDED or name.startswith("."):
         return True
+    if any(fnmatch.fnmatch(name, g) for g in DEFAULT_EXCLUDED_GLOBS):
+        return True
     relpath = relpath.replace(os.sep, "/")
     for pat in ignore_patterns:
         if fnmatch.fnmatch(name, pat):
@@ -290,6 +295,14 @@ def check_md(path, root):
     check_markdown_links(path, body if fm is not None else text, base_dir)
 
     if fm is None:
+        # A canonical doc (the three fixed-name files, or any concept .md inside a
+        # knowledge/ subtree) MUST carry frontmatter — silently passing one with
+        # its whole `---` block deleted would defeat CHECK 3. Free-form notes that
+        # happen to be .md are fine without it, so only fire on canonical docs.
+        rel = os.path.relpath(path, root).replace(os.sep, "/")
+        in_knowledge = "/knowledge/" in ("/" + rel)
+        if name in ("AGENTS.md", "index.md", "log.md") or (in_knowledge and name.endswith(".md")):
+            err(path, "missing YAML frontmatter (canonical docs require type + title + timestamp)")
         return
 
     # CHECK 3: required frontmatter keys (type + timestamp + title on every doc)

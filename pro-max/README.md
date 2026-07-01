@@ -100,8 +100,9 @@ one command schedules the daily reconciliation so the docs self-feed from day on
 # --cron   "30 7 * * 1-5"  (default: 07:30 on weekdays)
 ```
 
-It drops `knowledge/watcher-prompt.txt` into the tree and adds the cron line. Runner- and
-source-agnostic — pick the backend for where the files actually live:
+It drops the prompt into the tree at `.okf/watcher-prompt.txt` and adds the cron line (with an
+absolute runner path, so cron's minimal PATH can find it). Runner- and source-agnostic — pick
+the backend for where the files actually live:
 
 | Source | Detection | How to arm | Attribution |
 |---|---|---|---|
@@ -202,7 +203,15 @@ A few things stated plainly:
 A bundled `validate.py` (Python 3, **stdlib only**, runs anywhere) enforces the shapes:
 both `AGENTS.md` + `CLAUDE.md` present, the stub is exactly `@AGENTS.md`, required frontmatter
 keys, links and `resource:` paths resolve, `knowledge/` has an `index.md`, timestamps parse,
-`status` and supersede pointers are valid — failing on errors and listing warnings.
+`status` and supersede pointers are valid — failing on errors and listing warnings. It skips
+dotfiles and common build/dep dirs (`node_modules`, `venv`, `env`, `*.egg-info`, …); add a
+`.okfignore` at the tree root (one glob per line) to exclude anything else.
+
+`scripts/artifact-diff.py` is the watcher's **materiality gate** for `.xlsx/.pptx/.docx/.pdf`: it
+fingerprints each file's structure (sheets/tabs, slide/section counts + titles, page counts) against
+a baseline under `.okf/fingerprints/`, so cosmetic edits are ignored and only changes to *what the
+folder contains* are reported. Critical files listed in `.okf/always-ask` get a full `--detail` diff
+(every cell/paragraph). See [WATCHER.md](WATCHER.md).
 
 ---
 

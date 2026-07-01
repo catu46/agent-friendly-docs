@@ -34,6 +34,17 @@ done
 [ -d "$TARGET" ] || { echo "not a directory: $TARGET" >&2; exit 1; }
 TARGET="$(cd "$TARGET" && pwd)"
 
+# Resolve the runner's binary to an absolute path. cron runs with a minimal
+# PATH (/usr/bin:/bin), so a bare 'claude'/'codex'/'gemini' resolves to exit 127
+# ("command not found") and the watcher silently never fires.
+RUNNER_CMD="${RUNNER%% *}"; RUNNER_ARGS="${RUNNER#"$RUNNER_CMD"}"
+RUNNER_BIN="$(command -v "$RUNNER_CMD")" || {
+  echo "runner not found on PATH: $RUNNER_CMD" >&2
+  echo "install it, or pass an absolute path via --runner \"/abs/path -p\"" >&2
+  exit 1
+}
+RUNNER="$RUNNER_BIN$RUNNER_ARGS"
+
 mkdir -p "$TARGET/.okf"
 cp "$HERE/watcher-prompt.txt" "$TARGET/.okf/watcher-prompt.txt"
 

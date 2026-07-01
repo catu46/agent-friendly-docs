@@ -2,10 +2,13 @@
 
 Keeps `index.md` + `log.md` honest when people change the real artifacts
 **outside Claude Code** — SharePoint, Drive, Finder/Explorer. The watcher is a
-scheduled agent run; **the prompt it runs lives in one place, `scripts/watcher-prompt.txt`**
+scheduled agent run; **the master prompt lives in one place, `scripts/watcher-prompt.txt`**
 — that is the single source of truth. Do not paste copies of it into this file
 or anywhere else: the pro-max audit found duplicated prompt copies drift out of
 sync with each other. This doc is the design spec; that file is the prompt.
+(`arm-watcher.sh` copies that master into the target tree at `<tree>/.okf/watcher-prompt.txt`
+and the cron job runs it from there, logging to `<tree>/.okf/.watcher.log`. The
+`.okf/` dir is hidden so `validate.py` prunes it — re-arming just refreshes the copy.)
 
 ## 1. The problem
 
@@ -73,8 +76,34 @@ git-backed → `git log -1 --format='%an <%ae>' -- <file>`; Drive/SharePoint →
 the item's "last modified by" API field; plain filesystem → the OS file
 owner (often an account, not the human); otherwise a configured folder owner.
 Default delivery is an `ASKS.md` queue at the folder root (a tracker issue,
-Slack, or email work too — pick one per project). Leave the change un-applied
-or flagged until it's answered.
+Slack, or email work too — pick one per project). `ASKS.md` is created on the
+first question and is append-only; one block each:
+
+```
+## 2026-06-30T09:12:00Z — Plan_v8.xlsx
+- change: CHANGED Modelo!A2: 100 -> 120 (premise); new tab "Scenario_C"
+- unclear: was the premise change intentional, and what is Scenario_C?
+- editor: a.gonzalez (source: git author)
+- status: open
+```
+
+Leave the change un-applied or flagged until it's answered. To force a question
+for critical files (never auto-apply), list globs one per line in a
+`.okf/always-ask` at the tree root.
+
+**Materiality gate — only report what changes what's inside.** `index.md` exists to
+say what a folder *contains*, so the watcher ignores cosmetic edits and acts only on
+shape/inventory changes. For `.xlsx/.pptx/.docx/.pdf`, `scripts/artifact-diff.py`
+fingerprints each file and diffs it against a baseline at
+`.okf/fingerprints/<relpath>.json`. **By default it is structural**: xlsx = sheet
+names + used range + headers; pptx = slide count + titles; docx = heading outline +
+paragraph count; pdf = page count + page headings. So a retuned constant, a premise
+nudged 100→120, a reworded bullet or a typo is **"no material change"** — the docs are
+left alone; a new tab, a new/retitled slide, a new section, a new/deleted file shows
+up and drives an `index.md`/`log.md` update. For a critical file you want every number
+move on, list it in `.okf/always-ask`; there the watcher runs `--detail` (Excel by
+formula + typed input value, the rest by paragraph) and always asks. Stdlib only (PDF
+needs `pdftotext`, degrades gracefully without it).
 
 ## 5. Autonomy — arm it and forget it
 

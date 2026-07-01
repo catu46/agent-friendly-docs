@@ -28,8 +28,20 @@ through any tool — and bring the co-located docs back in sync.
      - legacy doc/ppt/xls: textutil (.doc on macOS) or
        `soffice --headless --convert-to txt|csv`.
      - big xlsx: read the <dimension> range + headers + ~20 sample rows only.
-   Pick one class: data-refresh | new-version (v7->v8) | new-concept | structural
-   | deletion.
+   MATERIALITY GATE — the docs exist to say WHAT THE FOLDER CONTAINS, so act only on
+   a change that alters that. For .xlsx/.pptx/.docx/.pdf, if scripts/artifact-diff.py
+   is present, run
+   `python3 scripts/artifact-diff.py diff <file> .okf/fingerprints/<relpath>.json`.
+   By default it is STRUCTURAL — it reports only shape/inventory changes: a sheet/tab
+   added or removed, a header/column relabeled, a slide/section added/removed/retitled,
+   a page-count change ("CHANGED sheets: Modelo -> Modelo | Cenario_C"). A cosmetic
+   edit — a retuned formula constant, an input nudged 100->120, a reworded bullet, a
+   typo — is reported as "no material change": DO NOT touch the docs, log, or ask for
+   it. ONLY if the file matches a glob in .okf/always-ask (a critical model) re-run
+   with `--detail` to surface every cell/paragraph and always ask.
+   (First run has no baseline -> "initialized"; fine, you set it in step 6.)
+   Classify only when the diff is non-empty or a whole file was added/removed:
+   data-refresh | new-version (v7->v8) | new-concept | structural | deletion.
 
 4. APPLY per change, in the owning folder:
      - data-refresh -> restamp the concept timestamp only.
@@ -50,14 +62,27 @@ through any tool — and bring the co-located docs back in sync.
    and who/source. Restamp every doc you touched. Walk UP to parent/root only
    where the change actually affects them. Change only what the edit touched.
 
-5. WHEN UNSURE, ASK — never guess. Attribute the last editor honestly by source:
-   git -> `git log -1 --format=%an -- <file>`; Drive/SharePoint -> "last modified
-   by"; plain filesystem -> OS owner; else configured folder owner. STATE which
-   source the name came from. Deliver via the configured channel (default: append
-   to ASKS.md). Leave the change flagged, not silently applied.
+5. WHEN UNSURE, ASK — never guess. Also read an optional .okf/always-ask at the
+   tree root (one glob per line, '#' comments): any change to a matching file is
+   ALWAYS queued as an ask and never auto-applied, no matter how confident you are
+   — use it for critical models where a silent restamp is unacceptable.
+   Attribute the last editor honestly by source: git ->
+   `git log -1 --format=%an -- <file>`; Drive/SharePoint -> "last modified by";
+   plain filesystem -> OS owner; else configured folder owner. STATE which source
+   the name came from. Deliver via the configured channel — default: append to
+   ASKS.md at the folder root. ASKS.md is append-only; add one block per question:
+       ## <ISO-8601 UTC> — <file>
+       - change: <what changed, incl. the exact artifact-diff lines if any>
+       - unclear: <the specific question>
+       - editor: <name> (source: git|Drive|SharePoint|filesystem|configured)
+       - status: open
+   Leave the change flagged, not silently applied.
 
 6. REWRITE SNAPSHOT. Set generated=<now ISO-8601 UTC> and replace files[] with the
    freshly scanned {path,sha256,mtime,size} (each path relative to THIS knowledge/ dir).
+   For every artifact you ran artifact-diff on, refresh its baseline with
+   `python3 scripts/artifact-diff.py dump <file> > .okf/fingerprints/<relpath>.json`
+   (mkdir -p the parent) so next run diffs against this state.
 
 7. REPORT. Summarize: counts of added/modified/deleted, what you applied, what you
    queued as asks. Run the validate script if present and report PASS/FAIL. If a graph

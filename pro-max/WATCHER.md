@@ -313,16 +313,55 @@ name came from, and admit when you cannot get one:
 **Delivery is configurable** (pick per project): append the question to an
 `ASKS.md` queue at the folder root, open a tracker issue, post to Slack, or send an
 email. Default is `ASKS.md` because it needs no integration and lives next to the
-docs. Each ask records the file, the detected change, what's unclear, the
-attributed editor, and the attribution source — e.g.:
+docs. `ASKS.md` is **created on first question and is append-only** — it is not
+scaffolded up front (an empty tree has none). Each ask is one block:
 
 ```
-- [ ] 2026-06-30 — Plan_v8.xlsx: new tab "Scenario_C" with no header row.
-      What does it represent? (last editor: a.gonzalez — source: git author)
+## 2026-06-30T09:12:00Z — Plan_v8.xlsx
+- change: new tab "Scenario_C" with no header row; CHANGED Modelo!D30: B30*1.1 -> B30*1.05
+- unclear: what does Scenario_C represent, and was the D30 margin change intentional?
+- editor: a.gonzalez (source: git author)
+- status: open
+```
+
+**Force-ask for critical files.** By default the watcher decides per change whether
+it is confident enough to auto-apply. To take that decision away for files where a
+silent edit is unacceptable (a board model, a pricing sheet), drop a
+**`.okf/always-ask`** at the tree root — one glob per line (`# comments` allowed):
+
+```
+# any change to these is always queued to ASKS.md, never auto-applied
+**/business-case*.xlsx
+pricing/*.xlsx
 ```
 
 Leave the change un-applied — or applied tentatively and flagged — until it is
 answered, so the docs never assert something the watcher invented.
+
+**Materiality gate — only report what changes what's inside.** The docs exist to say
+what a folder *contains*, so the watcher should ignore cosmetic edits and act only on
+changes to the shape/inventory. For `.xlsx/.pptx/.docx/.pdf`, the bundled
+**`scripts/artifact-diff.py`** fingerprints each artifact and diffs it against a
+baseline at `.okf/fingerprints/<relpath>.json`. By **default it is structural**:
+
+| type | structural fingerprint (what a diff can flag) |
+|------|-----------------------------------------------|
+| `.xlsx` | sheet/tab names, each sheet's used range + header row |
+| `.pptx` | slide count + slide titles |
+| `.docx` | heading outline + paragraph count |
+| `.pdf`  | page count + each page's first line |
+
+So a retuned formula constant, a premise nudged 100→120, a reworded bullet or a typo
+produces **"no material change"** and the watcher leaves the docs, log and asks
+untouched. A new tab, a new/removed/retitled slide, a relabeled column, a new section,
+a new/deleted file — things that change *what's inside* — show up (`CHANGED sheets:
+Modelo -> Modelo | Cenario_C`) and drive an update.
+
+For a **critical model** you *do* want every number move on (a board deck, a pricing
+sheet), list it in `.okf/always-ask`; there the watcher runs `--detail`, which
+fingerprints Excel by **formula + typed input value** per cell and slides/Word/PDF by
+paragraph, surfacing `CHANGED Modelo!A2: 100 -> 120` and always asking. Stdlib only;
+PDF needs `pdftotext` and degrades gracefully when it is absent.
 
 ---
 
@@ -351,83 +390,26 @@ Example cron (local, headless):
 
 ```
 # 07:30 every weekday — reconcile the docs for a project folder
-30 7 * * 1-5  cd /path/to/project && claude -p "$(cat knowledge/watcher-prompt.txt)" >> knowledge/.watcher.log 2>&1
+# (arm-watcher.sh writes exactly this line, with an ABSOLUTE runner path so cron's
+#  minimal PATH can find it, and the prompt deployed under the hidden .okf/)
+30 7 * * 1-5  cd /path/to/project && /abs/path/to/claude -p "$(cat .okf/watcher-prompt.txt)" >> .okf/.watcher.log 2>&1
 ```
 
 ---
 
-## 9. Daily-run agent prompt (copy-paste)
+## 9. Daily-run agent prompt
 
-Save this as the routine's prompt (or `knowledge/watcher-prompt.txt`). It is
-self-contained.
+The prompt the watcher runs is **`scripts/watcher-prompt.txt`** — the single
+source of truth, kept out of this file on purpose. Do **not** paste a copy here:
+this section used to hold a verbatim duplicate, and a copy that drifts from the
+armed `.txt` is exactly the failure the basic tier's WATCHER.md warns against.
 
-```
-You are the reconciliation watcher for an OKF-documented folder tree. Work in
-English internally; write any docs in the project's language; ask any questions
-in the user's language. Do not invent facts. Append-only: never delete a concept,
-never overwrite history.
-
-GOAL: detect changes made to the real artifacts since the last run — by anyone,
-through any tool — and bring the co-located docs back in sync.
-
-1. LOCATE SNAPSHOTS. Find every knowledge/.okf-state.json under the tree. Treat
-   each owning folder as a scope. (If a scope has no snapshot yet, treat this run
-   as the baseline: scan, write .okf-state.json, and report it as initialized.)
-
-2. DETECT. For each scope, rebuild current file state (respect exclusions). Use
-   the strongest backend available:
-     - git: `git status --porcelain` plus
-       `git log --since='<generated>' --name-status`; no commit SHA is stored, so
-       anchor on the snapshot's `generated`;
-     - else filesystem walk + sha256 per file;
-     - else the source API's "modified since <generated>" (Drive/SharePoint).
-   Diff vs .okf-state.json -> added / modified / deleted. Compare by sha256, not
-   mtime (sync/re-save bumps mtime without changing bytes).
-
-3. CLASSIFY by READING each changed artifact (bounded reads):
-     - PDF: your agent's native PDF reader (e.g. Claude Code's Read tool with a
-       page range), else `pdftotext -f <first> -l <last> file.pdf -`.
-     - pptx/xlsx/docx: python-pptx/openpyxl/python-docx if present, else
-       `unzip -p` the XML parts and strip tags.
-     - legacy doc/ppt/xls: textutil (.doc on macOS) or
-       `soffice --headless --convert-to txt|csv`.
-     - big xlsx: read the <dimension> range + headers + ~20 sample rows only.
-   Pick one class: data-refresh | new-version (v7->v8) | new-concept | structural
-   | deletion.
-
-4. APPLY per change, in the owning folder:
-     - data-refresh -> restamp the concept timestamp only.
-     - new-version -> APPEND-ONLY SUPERSEDE: keep the old concept, set its
-       status: superseded + superseded_by -> new, and repoint its resource at the
-       archived old file (move it into _archive/ or use source version history);
-       draft a NEW concept for the new version with status: active + supersedes ->
-       old; if you can infer WHY it changed, write a type: decision concept and
-       cross-link both versions, else queue an ask. Never delete the old concept;
-       never repoint a single concept onto the new file.
-     - new-concept -> draft a concept (OKF frontmatter: type,title,description,
-       resource,tags,timestamp + body) and add it to index.md.
-     - structural -> edit the concept body (schema/abas/caveats), restamp.
-     - deletion -> set the concept status: deprecated, annotate index.md, keep the
-       concept; if the bytes are recoverable archive them and repoint resource, else
-       drop the optional resource line (never leave it dangling) and note it is gone.
-   Append one reverse-chronological line to log.md with timestamp, what changed,
-   and who/source. Restamp every doc you touched. Walk UP to parent/root only
-   where the change actually affects them. Change only what the edit touched.
-
-5. WHEN UNSURE, ASK — never guess. Attribute the last editor honestly by source:
-   git -> `git log -1 --format=%an -- <file>`; Drive/SharePoint -> "last modified
-   by"; plain filesystem -> OS owner; else configured folder owner. STATE which
-   source the name came from. Deliver via the configured channel (default: append
-   to ASKS.md). Leave the change flagged, not silently applied.
-
-6. REWRITE SNAPSHOT. Set generated=<now ISO-8601 UTC> and replace files[] with the
-   freshly scanned {path,sha256,mtime,size} (each path relative to THIS knowledge/ dir).
-
-7. REPORT. Summarize: counts of added/modified/deleted, what you applied, what you
-   queued as asks. Run the validate script if present and report PASS/FAIL. If a graph
-   generator (scripts/graph.py) is present, regenerate knowledge-graph.html so the
-   visual tree tracks the docs.
-```
+`arm-watcher.sh <tree> --install` copies that master into the target tree at
+`<tree>/.okf/watcher-prompt.txt` and schedules the runner against it (logging to
+`<tree>/.okf/.watcher.log`). The `.okf/` dir is hidden, so `validate.py` prunes
+it and arming the watcher never trips the shape check — even on a router-only
+"mother" root with no `knowledge/` bundle. To read or edit the prompt, open
+`scripts/watcher-prompt.txt`; re-run `arm-watcher.sh` to redeploy it.
 
 ---
 
